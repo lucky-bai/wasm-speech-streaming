@@ -1,4 +1,4 @@
-import init, { MoshiASRDecoder } from "./build/candle_wasm_moshi_asr.js";
+import init, { MoshiASRDecoder } from "./build/wasm_speech_streaming.js";
 
 async function fetchArrayBuffer(url) {
   const cacheName = "whisper-candle-cache";
