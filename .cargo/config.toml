@@ -3,3 +3,6 @@ rustflags = [
   "-C", "target-feature=+simd128,+atomics,+bulk-memory,+mutable-globals",
   "--cfg=getrandom_backend=\"wasm_js\""
 ]
+
+[unstable]
+build-std = ["panic_abort", "std"]
