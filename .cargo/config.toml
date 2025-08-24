@@ -1,7 +1,8 @@
 [target.wasm32-unknown-unknown]
 rustflags = [
   "-C", "target-feature=+simd128,+atomics,+bulk-memory,+mutable-globals",
-  "--cfg=getrandom_backend=\"wasm_js\""
+  "--cfg=getrandom_backend=\"wasm_js\"",
+  "-C", "link-arg=--max-memory=4294967296"
 ]
 
 [unstable]
