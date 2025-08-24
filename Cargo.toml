@@ -1,0 +1,54 @@
+[package]
+name = "wasm-speech-streaming"
+version = "0.1.0"
+edition = "2025"
+description = "WASM speech streaming with Candle"
+license = "MIT"
+
+[dependencies]
+candle-core = "0.9.1"
+candle-nn = "0.9.1"
+candle-transformers = "0.9.1"
+num-traits = "0.2"
+tokenizers = { version = "0.20", features = ["unstable_wasm"] }
+
+# App crates.
+anyhow = "1.0"
+log = "0.4"
+rand = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+hound = "3.5"
+safetensors = "0.4"
+
+# Wasm specific crates.
+getrandom = { version = "0.2", features = ["js"] }
+gloo = "0.11"
+js-sys = "0.3.64"
+wasm-bindgen = "0.2.87"
+wasm-bindgen-futures = "0.4.37"
+wasm-logger = "0.2"
+yew-agent = "0.2.0"
+yew = { version = "0.20.0", features = ["csr"] }
+
+moshi = "0.6.1"
+
+[dependencies.web-sys]
+version = "0.3.70"
+features = [
+  'Blob',
+  'Document',
+  'Element',
+  'HtmlElement',
+  'Node',
+  'Window',
+  'Request',
+  'RequestCache',
+  'RequestInit',
+  'RequestMode',
+  'Response',
+  'Performance',
+]
+
+[lib]
+crate-type = ["cdylib"]
