@@ -4,10 +4,14 @@ Cargo.lock
 *.pdb
 
 # WASM build artifacts
+/build/
 /pkg/
 /dist/
 *.wasm
 *.js.map
+*_bg.js
+*_bg.wasm
+*_bg.wasm.d.ts
 
 # Node.js (if using npm/yarn for build tools)
 node_modules/
@@ -50,5 +54,8 @@ Thumbs.db
 *.bin
 !prepare/*.json
 
-# Build scripts output
+# Downloaded dependencies
+css/
+
+# Build scripts output  
 build/
