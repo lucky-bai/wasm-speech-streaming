@@ -1,2 +1,9 @@
 [target.wasm32-unknown-unknown]
-rustflags = ["-C", "target-feature=+simd128", "--cfg", 'getrandom_backend="wasm_js"']
+rustflags = [
+  "-C", "target-feature=+simd128,+atomics,+bulk-memory,+mutable-globals",
+  "--cfg=getrandom_backend=\"wasm_js\"",
+  "-C", "link-arg=--max-memory=4294967296"
+]
+
+[unstable]
+build-std = ["panic_abort", "std"]

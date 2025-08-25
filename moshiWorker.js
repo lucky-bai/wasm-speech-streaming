@@ -1,4 +1,7 @@
-import init, { MoshiASRDecoder } from "./build/wasm_speech_streaming.js";
+import init, {
+  MoshiASRDecoder,
+  initThreadPool,
+} from "./build/wasm_speech_streaming.js";
 
 async function fetchArrayBuffer(url) {
   const cacheName = "whisper-candle-cache";
@@ -21,8 +24,13 @@ class MoshiASR {
     // load individual modelID only once
     if (!this.instance[modelID]) {
       await init();
+      const numThreads = navigator.hardwareConcurrency || 4;
+      await initThreadPool(numThreads);
 
-      self.postMessage({ status: "loading", message: "Loading Model" });
+      self.postMessage({
+        status: "loading",
+        message: `Loading Model with ${numThreads} threads`,
+      });
       const [weightsArrayU8, tokenizerArrayU8, mimiArrayU8, configArrayU8] =
         await Promise.all([
           fetchArrayBuffer(weightsURL),
