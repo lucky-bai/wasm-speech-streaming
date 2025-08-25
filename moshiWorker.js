@@ -73,11 +73,20 @@ class MoshiASR {
 
   static processAudio(audioData) {
     if (this.decoder) {
+      const startTime = performance.now();
+
       this.decoder.process_audio_chunk(audioData, (word) => {
         self.postMessage({
           status: "streaming",
           word: word,
         });
+      });
+
+      const processingTime = performance.now() - startTime;
+
+      self.postMessage({
+        status: "chunk_processed",
+        processingTime: processingTime,
       });
     }
   }

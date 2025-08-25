@@ -26,10 +26,47 @@
       let source = null;
       let modelInitialized = false;
       let pendingStart = false;
+      
+      // Performance tracking
+      let totalProcessingTime = 0;
+      let sessionStartTime = 0;
 
       function updateStatusDiv(message) {
         document.querySelector("#status-div").textContent = message;
       }
+
+      function updateDiagnostics() {
+        const diagnostics = document.querySelector("#diagnostics");
+        if (!diagnostics) return;
+        
+        const cpuCount = navigator.hardwareConcurrency || 'unknown';
+        
+        // Only update metrics when recording, otherwise show final values
+        if (isRecording && sessionStartTime) {
+          // Calculate real-time factor (audio processed / wall clock time)
+          // >1 = faster than real-time, <1 = slower than real-time  
+          const audioSessionDuration = (Date.now() - sessionStartTime) / 1000;
+          const realTimeFactor = audioSessionDuration > 0 ? (totalProcessingTime / audioSessionDuration) : 0;
+          
+          // Color code based on performance
+          let factorColor = '';
+          if (realTimeFactor >= 0.9) {
+            factorColor = 'text-green-600';
+          } else if (realTimeFactor >= 0.8) {
+            factorColor = 'text-yellow-600';
+          }
+          else {
+            factorColor = 'text-red-600';
+          }
+          
+          diagnostics.innerHTML = `CPUs: ${cpuCount}, Real-time factor: <span class="${factorColor}">${realTimeFactor.toFixed(2)}x</span>, Duration: ${audioSessionDuration.toFixed(1)}s`;
+        } else if (!sessionStartTime) {
+          diagnostics.innerHTML = `CPUs: ${cpuCount}, Real-time factor: <span class="text-gray-600">0.00x</span>, Duration: 0.0s`;
+        }
+      }
+
+      window.addEventListener('load', updateDiagnostics);
+      setInterval(updateDiagnostics, 200);
 
       function initializeModel() {
         if (modelInitialized) return;
@@ -69,6 +106,10 @@
             outputDiv.textContent = data.word;
           }
           outputDiv.hidden = false;
+        } else if (data.status === "chunk_processed") {
+          if (data.processingTime) {
+            totalProcessingTime += data.processingTime;
+          }
         } else if (data.status === "loading") {
           updateStatusDiv(data.message || "Loading...");
         } else if (data.error) {
@@ -160,6 +201,10 @@
           updateStatusDiv("Requesting microphone access...");
           await startMicrophone();
           
+          // Reset performance counters
+          totalProcessingTime = 0;
+          sessionStartTime = Date.now();
+          
           // Start streaming session
           moshiWorker.postMessage({ command: "start_stream" });
           
@@ -225,8 +270,9 @@
         <button id="speech-button" class="bg-gray-700 hover:bg-gray-800 text-white font-normal py-2 px-4 rounded">
           Start Speech
         </button>
-        <div class="mt-2 text-gray-600">
-          Status: <span id="status-div">Click "Start Speech" to begin</span>
+        <div class="mt-2 text-gray-600 text-sm space-y-1">
+          <div>Status: <span id="status-div">Click "Start Speech" to begin</span></div>
+          <div id="diagnostics">CPUs: -, Real-time factor: 0.00x, Duration: 0.0s</div>
         </div>
       </div>
 
