@@ -23,23 +23,47 @@ Performance varies by device.
 - On older devices, it may not keep up (real-time factor < 1).
 - Mobile devices are not supported.
 
+## Prerequisites
+
+- **Rust, Cargo, wasm32-unknown-unknown**
+
+  ```bash
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+  rustup target add wasm32-unknown-unknown
+  ```
+
+- **wasm-bindgen-cli**
+
+  ```bash
+  cargo install wasm-bindgen-cli
+  ```
+
+- **wasm-opt (Binaryen)** – optional but recommended
+
+  - macOS: `brew install binaryen`
+  - Ubuntu/Debian: `sudo apt install binaryen`
+
+- **Python 3**
+- **curl**
+
 ## Running Locally
 
 1. **Clone the repository:**
 
-   ```
-   git clone https://lucky-bai/wasm-speech-streaming
+   ```bash
+   git clone https://github.com/lucky-bai/wasm-speech-streaming
    cd wasm-speech-streaming
    ```
 
 2. **Build the Rust/WASM library:**
 
-   ```
+   ```bash
    ./build-lib.sh
    ```
 
 3. **Open your browser and go to:**
-   ```
+
+   ```bash
    http://localhost:8000
    ```
 
