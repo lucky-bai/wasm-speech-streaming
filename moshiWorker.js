@@ -15,22 +15,29 @@ async function fetchArrayBuffer(url) {
   cache.put(url, res.clone());
   return new Uint8Array(await res.arrayBuffer());
 }
+
 class MoshiASR {
-  static instance = {};
-  // Retrieve the model. When called for the first time,
-  // this will load the model and save it for future use.
-  static async getInstance(params) {
-    const { weightsURL, modelID, tokenizerURL, mimiURL, configURL } = params;
-    // load individual modelID only once
-    if (!this.instance[modelID]) {
+  static decoder = null;
+
+  // Initialize the model
+  static async initialize(params) {
+    const { weightsURL, tokenizerURL, mimiURL, configURL } = params;
+
+    if (this.decoder) {
+      self.postMessage({ status: "model_ready" });
+      return;
+    }
+
+    try {
       await init();
       const numThreads = navigator.hardwareConcurrency || 4;
       await initThreadPool(numThreads);
 
       self.postMessage({
         status: "loading",
-        message: `Loading Model with ${numThreads} threads`,
+        message: `Loading Model (~950 MB)`,
       });
+
       const [weightsArrayU8, tokenizerArrayU8, mimiArrayU8, configArrayU8] =
         await Promise.all([
           fetchArrayBuffer(weightsURL),
@@ -39,45 +46,80 @@ class MoshiASR {
           fetchArrayBuffer(configURL),
         ]);
 
-      this.instance[modelID] = new MoshiASRDecoder(
+      this.decoder = new MoshiASRDecoder(
         weightsArrayU8,
         tokenizerArrayU8,
         mimiArrayU8,
         configArrayU8
       );
-    } else {
-      self.postMessage({ status: "loading", message: "Model Already Loaded" });
+
+      self.postMessage({ status: "model_ready" });
+    } catch (error) {
+      self.postMessage({ error: error.message });
     }
-    return this.instance[modelID];
+  }
+
+  static startStream() {
+    if (this.decoder) {
+      this.decoder.start_streaming();
+    }
+  }
+
+  static stopStream() {
+    if (this.decoder) {
+      this.decoder.stop_streaming();
+    }
+  }
+
+  static processAudio(audioData) {
+    if (this.decoder) {
+      this.decoder.process_audio_chunk(audioData, (word) => {
+        self.postMessage({
+          status: "streaming",
+          word: word,
+        });
+      });
+      self.postMessage({
+        status: "chunk_processed",
+      });
+    }
   }
 }
 
 self.addEventListener("message", async (event) => {
-  const { weightsURL, modelID, tokenizerURL, configURL, mimiURL, audioURL } =
-    event.data;
+  const { command } = event.data;
+
   try {
-    self.postMessage({ status: "decoding", message: "Starting Decoder" });
-    const decoder = await MoshiASR.getInstance({
-      weightsURL,
-      modelID,
-      tokenizerURL,
-      mimiURL,
-      configURL,
-    });
+    switch (command) {
+      case "initialize":
+        const { weightsURL, modelID, tokenizerURL, mimiURL, configURL } =
+          event.data;
+        await MoshiASR.initialize({
+          weightsURL,
+          modelID,
+          tokenizerURL,
+          mimiURL,
+          configURL,
+        });
+        break;
 
-    self.postMessage({ status: "decoding", message: "Loading Audio" });
-    const audioArrayU8 = await fetchArrayBuffer(audioURL);
+      case "start_stream":
+        MoshiASR.startStream();
+        break;
 
-    self.postMessage({ status: "decoding", message: "Running Decoder..." });
-    const segments = decoder.decode(audioArrayU8);
+      case "stop_stream":
+        MoshiASR.stopStream();
+        break;
 
-    // Send the segment back to the main thread as JSON
-    self.postMessage({
-      status: "complete",
-      message: "complete",
-      output: JSON.parse(segments),
-    });
+      case "process_audio":
+        const { audioData } = event.data;
+        MoshiASR.processAudio(audioData);
+        break;
+
+      default:
+        self.postMessage({ error: "Unknown command: " + command });
+    }
   } catch (e) {
-    self.postMessage({ error: e });
+    self.postMessage({ error: e.message });
   }
 });
