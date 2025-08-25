@@ -32,56 +32,15 @@ impl MoshiASRDecoder {
         }
     }
 
-    pub fn decode(&self, audio: &[u8]) -> String {
-        match &self.inner {
-            Some(model_cell) => {
-                console_log!("Using loaded Moshi model for transcription");
-
-                // Convert audio bytes to PCM f32 data
-                let pcm_result = convert_audio_to_pcm(audio);
-                match pcm_result {
-                    Ok(pcm_data) => {
-                        console_log!("Converted audio to PCM, {} samples", pcm_data.len());
-
-                        // Perform transcription
-                        let mut model = model_cell.borrow_mut();
-                        match model.transcribe(pcm_data) {
-                            Ok(words) => {
-                                console_log!("Successfully transcribed {} words", words.len());
-                                let full_text = words.join(" ");
-
-                                // Format as segments JSON (compatible with existing interface)
-                                let json_result = serde_json::json!([{
-                                    "start": 0.0,
-                                    "duration": 1.0,
-                                    "dr": {
-                                        "tokens": [],
-                                        "text": full_text,
-                                        "avg_logprob": -0.5,
-                                        "no_speech_prob": 0.1,
-                                        "temperature": 0.0,
-                                        "compression_ratio": 1.0
-                                    }
-                                }]);
-
-                                console_log!("Returning transcription: {}", full_text);
-                                json_result.to_string()
-                            }
-                            Err(e) => {
-                                console_log!("Failed to transcribe audio: {:?}", e);
-                                r#"[{"start": 0.0, "duration": 1.0, "dr": {"tokens": [], "text": "Transcription failed", "avg_logprob": -1.0, "no_speech_prob": 0.0, "temperature": 0.0, "compression_ratio": 1.0}}]"#.to_string()
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        console_log!("Failed to convert audio format: {:?}", e);
-                        r#"[{"start": 0.0, "duration": 1.0, "dr": {"tokens": [], "text": "Audio format error", "avg_logprob": -1.0, "no_speech_prob": 0.0, "temperature": 0.0, "compression_ratio": 1.0}}]"#.to_string()
-                    }
-                }
-            }
-            None => {
-                console_log!("No model loaded - returning error");
-                r#"[{"start": 0.0, "duration": 1.0, "dr": {"tokens": [], "text": "Model not loaded", "avg_logprob": -1.0, "no_speech_prob": 0.0, "temperature": 0.0, "compression_ratio": 1.0}}]"#.to_string()
+    pub fn decode_streaming(&self, audio: &[u8], callback: &js_sys::Function) {
+        if let Some(model_cell) = &self.inner {
+            if let Ok(pcm_data) = convert_audio_to_pcm(audio) {
+                let mut model = model_cell.borrow_mut();
+                let _ = model.transcribe_streaming(pcm_data, |word| {
+                    let this = &JsValue::NULL;
+                    let word_js = JsValue::from_str(word);
+                    let _ = callback.call1(this, &word_js);
+                });
             }
         }
     }

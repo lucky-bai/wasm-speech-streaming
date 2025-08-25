@@ -73,13 +73,18 @@ self.addEventListener("message", async (event) => {
     const audioArrayU8 = await fetchArrayBuffer(audioURL);
 
     self.postMessage({ status: "decoding", message: "Running Decoder..." });
-    const segments = decoder.decode(audioArrayU8);
 
-    // Send the segment back to the main thread as JSON
+    decoder.decode_streaming(audioArrayU8, (word) => {
+      // Send each word as it becomes available
+      self.postMessage({
+        status: "streaming",
+        word: word,
+      });
+    });
+
     self.postMessage({
       status: "complete",
       message: "complete",
-      output: JSON.parse(segments),
     });
   } catch (e) {
     self.postMessage({ error: e });

@@ -60,7 +60,10 @@ impl MoshiModel {
         })
     }
 
-    pub fn transcribe(&mut self, pcm: Vec<f32>) -> Result<Vec<String>> {
+    pub fn transcribe_streaming<F>(&mut self, pcm: Vec<f32>, mut callback: F) -> Result<()>
+    where
+        F: FnMut(&str),
+    {
         // Add the silence prefix to the audio.
         let mut pcm = pcm;
         if self.config.stt_config.audio_silence_prefix_seconds > 0.0 {
@@ -72,8 +75,7 @@ impl MoshiModel {
         let suffix = (self.config.stt_config.audio_delay_seconds * 24000.0) as usize;
         pcm.resize(pcm.len() + suffix + 24000, 0.0);
 
-        let mut transcription = Vec::new();
-        let mut last_word = None;
+        let mut last_word: Option<(String, f64)> = None;
 
         for pcm_chunk in pcm.chunks(1920) {
             let pcm_tensor = Tensor::new(pcm_chunk, &self.dev)?.reshape((1, 1, ()))?;
@@ -84,10 +86,9 @@ impl MoshiModel {
             for asr_msg in asr_msgs.iter() {
                 match asr_msg {
                     moshi::asr::AsrMsg::Step { .. } => {}
-                    moshi::asr::AsrMsg::EndWord { stop_time, .. } => {
-                        if let Some((word, start_time)) = last_word.take() {
-                            console_log!("Word: [{}-{}] {}", start_time, stop_time, word);
-                            transcription.push(word);
+                    moshi::asr::AsrMsg::EndWord { .. } => {
+                        if let Some((word, _)) = last_word.take() {
+                            callback(&word);
                         }
                     }
                     moshi::asr::AsrMsg::Word {
@@ -99,29 +100,22 @@ impl MoshiModel {
                             .unwrap_or_else(|_| String::new());
 
                         if self.timestamps {
-                            if let Some((prev_word, prev_start_time)) = last_word.take() {
-                                console_log!(
-                                    "Word: [{}-{}] {}",
-                                    prev_start_time,
-                                    start_time,
-                                    prev_word
-                                );
-                                transcription.push(prev_word);
+                            if let Some((prev_word, _)) = last_word.take() {
+                                callback(&prev_word);
                             }
                             last_word = Some((word, *start_time));
                         } else {
-                            transcription.push(word);
+                            callback(&word);
                         }
                     }
                 }
             }
         }
 
-        if let Some((word, start_time)) = last_word.take() {
-            console_log!("Final word: [{}] {}", start_time, word);
-            transcription.push(word);
+        if let Some((word, _)) = last_word.take() {
+            callback(&word);
         }
 
-        Ok(transcription)
+        Ok(())
     }
 }

@@ -38,11 +38,23 @@
       }
 
       function updateStatus(data) {
-        const { status, message } = data;
+        const { status, message, word } = data;
         const button = document.querySelector("#detect");
+        const outputDiv = document.querySelector("#output-generation");
+        const statusDiv = document.querySelector("#output-status");
+        
         if (status === "loading" || status === "decoding") {
           button.disabled = true;
           button.textContent = message || (status === "loading" ? "Loading..." : "Decoding...");
+        } else if (status === "streaming") {
+          // Add new word to the transcription in real-time
+          if (outputDiv.textContent) {
+            outputDiv.textContent += " " + word;
+          } else {
+            outputDiv.textContent = word;
+          }
+          statusDiv.hidden = true;
+          outputDiv.hidden = false;
         } else if (status === "complete") {
           button.disabled = false;
           button.textContent = "Transcribe Audio";
@@ -91,15 +103,15 @@
 
       document.querySelector("#detect").addEventListener("click", async () => {
         if (!audioURL) return;
+        
+        // Clear previous transcription
+        document.querySelector("#output-generation").textContent = "";
+        document.querySelector("#output-generation").hidden = true;
+        document.querySelector("#output-status").hidden = false;
+        document.querySelector("#output-status").textContent = "Starting transcription...";
+        
         try {
-          const result = await transcribeAudio();
-          const text = (result.output || [])
-            .map(seg => (seg?.dr?.text ?? "").trim())
-            .filter(Boolean)
-            .join(" ");
-          document.querySelector("#output-status").hidden = true;
-          document.querySelector("#output-generation").hidden = false;
-          document.querySelector("#output-generation").textContent = text || "(No text returned)";
+          await transcribeAudio();
         } catch (err) {
           console.error(err);
           document.querySelector("#output-status").hidden = false;
