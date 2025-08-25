@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Candle Moshi ASR — Simplified</title>
+    <title>WASM Streaming Speech Recognition</title>
     <style>
       @import url("https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700&display=swap");
       html, body { font-family: "Source Sans 3", system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
@@ -16,36 +16,25 @@
       const TOKENIZER_URL = "https://huggingface.co/efficient-nlp/stt-1b-en_fr-quantized/resolve/main/tokenizer_en_fr_audio_8000.json";
       const CONFIG_URL = "https://huggingface.co/efficient-nlp/stt-1b-en_fr-quantized/resolve/main/config.json";
 
-      const AUDIO_BASE_URL = "/audios/";
-      const SAMPLES = [
-        { file: "samples_jfk.wav", label: "jfk.wav", size: "352 kB" },
-        { file: "samples_chessvideo.wav", label: "chessvideo.wav", size: "3.7 MB" },
-      ];
-
       const moshiWorker = new Worker("./moshiWorker.js", { type: "module" });
-      let audioURL = null;
+      let mediaRecorder = null;
+      let audioChunks = [];
+      let isRecording = false;
+      let audioStream = null;
+      let audioContext = null;
+      let processor = null;
+      let source = null;
 
-      function setAudio(src) {
-        const audio = document.querySelector("#audio");
-        audio.src = src;
-        audio.hidden = false;
-        audio.controls = true;
-        document.querySelector("#detect").disabled = false;
-        document.querySelector("#output-generation").textContent = "";
-        document.querySelector("#output-status").hidden = false;
-        document.querySelector("#output-status").textContent = "Ready to transcribe";
-        audioURL = src;
+      function updateStatusDiv(message) {
+        document.querySelector("#status-div").textContent = message;
       }
 
       function updateStatus(data) {
         const { status, message, word } = data;
-        const button = document.querySelector("#detect");
         const outputDiv = document.querySelector("#output-generation");
-        const statusDiv = document.querySelector("#output-status");
         
         if (status === "loading" || status === "decoding") {
-          button.disabled = true;
-          button.textContent = message || (status === "loading" ? "Loading..." : "Decoding...");
+          updateStatusDiv(message || (status === "loading" ? "Loading..." : "Decoding..."));
         } else if (status === "streaming") {
           // Add new word to the transcription in real-time
           if (outputDiv.textContent) {
@@ -53,107 +42,126 @@
           } else {
             outputDiv.textContent = word;
           }
-          statusDiv.hidden = true;
           outputDiv.hidden = false;
         } else if (status === "complete") {
-          button.disabled = false;
-          button.textContent = "Transcribe Audio";
+          updateStatusDiv("Ready");
         }
       }
 
-      async function transcribeAudio() {
-        return new Promise((resolve, reject) => {
-          moshiWorker.postMessage({
-            weightsURL: WEIGHTS_URL,
-            modelID: MODEL_ID,
-            mimiURL: MIMI_URL,
-            tokenizerURL: TOKENIZER_URL,
-            configURL: CONFIG_URL,
-            audioURL,
-          });
-
-          function handler(event) {
-            const data = event.data;
-            if ("status" in data) updateStatus(data);
-            if ("error" in data) {
-              moshiWorker.removeEventListener("message", handler);
-              reject(new Error(data.error));
-            }
-            if (data.status === "complete") {
-              moshiWorker.removeEventListener("message", handler);
-              resolve(data);
-            }
-          }
-          moshiWorker.addEventListener("message", handler);
-        });
-      }
-
-      const samplesEl = document.querySelector("#audios-select");
-      for (const s of SAMPLES) {
-        const btn = document.createElement("button");
-        btn.className = "text-gray-600 border border-gray-400 rounded-md px-3 py-2 hover:border-gray-600";
-        btn.textContent = `${s.label}`;
-        const size = document.createElement("span");
-        size.textContent = ` (${s.size})`;
-        size.className = "text-xs ml-1";
-        btn.appendChild(size);
-        btn.addEventListener("click", () => setAudio(AUDIO_BASE_URL + s.file));
-        samplesEl.appendChild(btn);
-      }
-
-      document.querySelector("#detect").addEventListener("click", async () => {
-        if (!audioURL) return;
-        
-        // Clear previous transcription
-        document.querySelector("#output-generation").textContent = "";
-        document.querySelector("#output-generation").hidden = true;
-        document.querySelector("#output-status").hidden = false;
-        document.querySelector("#output-status").textContent = "Starting transcription...";
-        
+      async function startMicrophone() {
         try {
-          await transcribeAudio();
-        } catch (err) {
-          console.error(err);
-          document.querySelector("#output-status").hidden = false;
-          document.querySelector("#output-status").textContent = "Error: " + err.message;
+          audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          updateStatusDiv("Microphone access granted");
+          
+          audioContext = new AudioContext({ sampleRate: 24000 });
+          source = audioContext.createMediaStreamSource(audioStream);
+          
+          processor = audioContext.createScriptProcessor(1024, 1, 1);
+          
+          processor.onaudioprocess = function(event) {
+            if (!isRecording) return;
+            
+            const inputBuffer = event.inputBuffer;
+            const inputData = inputBuffer.getChannelData(0);
+            
+            // Log each frame of audio data
+            console.log('Audio frame:', inputData.length, 'samples');
+            console.log('Sample values:', Array.from(inputData.slice(0, 10)));
+          };
+          
+          source.connect(processor);
+          processor.connect(audioContext.destination);
+          
+        } catch (error) {
+          updateStatusDiv("Microphone access denied: " + error.message);
+          throw error;
+        }
+      }
+      
+      function stopMicrophone() {
+        // Disconnect audio nodes
+        if (processor) {
+          processor.disconnect();
+          processor = null;
+        }
+        if (source) {
+          source.disconnect();
+          source = null;
+        }
+        if (audioContext) {
+          audioContext.close();
+          audioContext = null;
+        }
+        
+        // Stop media stream
+        if (audioStream) {
+          audioStream.getTracks().forEach(track => track.stop());
+          audioStream = null;
+        }
+        
+        updateStatusDiv("Microphone stopped");
+      }
+
+
+      document.querySelector("#speech-button").addEventListener("click", async () => {
+        const button = document.querySelector("#speech-button");
+        
+        if (!isRecording) {
+          try {
+            updateStatusDiv("Requesting microphone access...");
+            await startMicrophone();
+            
+            isRecording = true;
+            button.textContent = "Stop Speech";
+            button.className = "bg-red-600 hover:bg-red-700 text-white font-normal py-2 px-4 rounded";
+            updateStatusDiv("Listening...");
+            
+            // Clear previous transcription
+            document.querySelector("#output-generation").textContent = "";
+            document.querySelector("#output-generation").hidden = true;
+            
+          } catch (error) {
+            console.error('Error starting microphone:', error);
+            updateStatusDiv("Error: " + error.message);
+          }
+        } else {
+          stopMicrophone();
+          
+          isRecording = false;
+          button.textContent = "Start Speech";
+          button.className = "bg-gray-700 hover:bg-gray-800 text-white font-normal py-2 px-4 rounded";
+          updateStatusDiv("Stopped");
         }
       });
     </script>
   </head>
   <body class="container max-w-4xl mx-auto p-4">
     <main class="grid grid-cols-1 gap-8 relative">
-      <span class="absolute text-5xl -ml-[1em]">🕯️</span>
       <div>
-        <h1 class="text-5xl font-bold">Candle Moshi ASR</h1>
-        <h2 class="text-2xl font-semibold">Rust/WASM Demo</h2>
-        <p class="max-w-lg text-gray-700">
-          Transcribe audio in the browser using Rust/WASM with an audio file.
+        <h1 class="text-4xl font-bold">WASM Streaming Speech Recognition</h1>
+        <p class="max-w-xl text-gray-700">
+          Transcribe audio from your microphone in real time in the browser using Rust/WASM.
           This demo uses the
-          <a href="https://huggingface.co/openai/" target="_blank" class="underline hover:text-blue-600">Moshi ASR models</a>
+          <a href="https://huggingface.co/kyutai/stt-1b-en_fr" target="_blank" class="underline hover:text-blue-600">Moshi ASR model</a>
           and a WASM runtime built with
           <a href="https://github.com/huggingface/candle/" target="_blank" class="underline hover:text-blue-600">Candle</a>.
         </p>
       </div>
 
       <div>
-        <div class="flex flex-wrap gap-3 items-center" id="audios-select">
-          <h3 class="font-medium mr-2">Examples:</h3>
-        </div>
-      </div>
-
-      <audio id="audio" hidden controls class="w-full p-2 select-none"></audio>
-
-      <div>
-        <button id="detect" disabled class="bg-gray-700 hover:bg-gray-800 text-white font-normal py-2 px-4 rounded disabled:bg-gray-300 disabled:cursor-not-allowed">
-          Transcribe Audio
+        <button id="speech-button" class="bg-gray-700 hover:bg-gray-800 text-white font-normal py-2 px-4 rounded">
+          Start Speech
         </button>
+        <div class="mt-2 text-gray-600">
+          Status: <span id="status-div">Ready to start</span>
+        </div>
       </div>
 
       <div>
         <h3 class="font-medium">Transcription:</h3>
         <div class="min-h-[200px] bg-slate-100 text-gray-700 p-4 rounded-md">
           <p id="output-generation" hidden></p>
-          <span id="output-status" class="font-light">No transcription results yet</span>
+          <span id="output-placeholder" class="font-light text-gray-500">Click "Start Speech" to begin transcription</span>
         </div>
       </div>
     </main>
