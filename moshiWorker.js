@@ -15,6 +15,7 @@ async function fetchArrayBuffer(url) {
   cache.put(url, res.clone());
   return new Uint8Array(await res.arrayBuffer());
 }
+
 class MoshiASR {
   static instance = {};
   // Retrieve the model. When called for the first time,
@@ -31,6 +32,7 @@ class MoshiASR {
         status: "loading",
         message: `Loading Model with ${numThreads} threads`,
       });
+
       const [weightsArrayU8, tokenizerArrayU8, mimiArrayU8, configArrayU8] =
         await Promise.all([
           fetchArrayBuffer(weightsURL),
@@ -48,6 +50,7 @@ class MoshiASR {
     } else {
       self.postMessage({ status: "loading", message: "Model Already Loaded" });
     }
+
     return this.instance[modelID];
   }
 }
@@ -55,6 +58,7 @@ class MoshiASR {
 self.addEventListener("message", async (event) => {
   const { weightsURL, modelID, tokenizerURL, configURL, mimiURL, audioURL } =
     event.data;
+
   try {
     self.postMessage({ status: "decoding", message: "Starting Decoder" });
     const decoder = await MoshiASR.getInstance({
