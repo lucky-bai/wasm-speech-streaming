@@ -35,7 +35,7 @@ class MoshiASR {
 
       self.postMessage({
         status: "loading",
-        message: `Loading Model with ${numThreads} threads`,
+        message: `Loading Model (~950 MB)`,
       });
 
       const [weightsArrayU8, tokenizerArrayU8, mimiArrayU8, configArrayU8] =
