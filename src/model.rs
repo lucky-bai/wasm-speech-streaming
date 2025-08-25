@@ -118,4 +118,33 @@ impl MoshiModel {
 
         Ok(())
     }
+
+    pub fn process_chunk<F>(&mut self, pcm_chunk: &[f32], mut callback: F) -> Result<()>
+    where
+        F: FnMut(&str),
+    {
+        let pcm_tensor = Tensor::new(pcm_chunk, &self.dev)?.reshape((1, 1, ()))?;
+        let asr_msgs = self
+            .state
+            .step_pcm(pcm_tensor, None, &().into(), |_, _, _| ())?;
+
+        for asr_msg in asr_msgs.iter() {
+            match asr_msg {
+                moshi::asr::AsrMsg::Step { .. } => {}
+                moshi::asr::AsrMsg::EndWord { .. } => {}
+                moshi::asr::AsrMsg::Word { tokens, .. } => {
+                    let word = self
+                        .text_tokenizer
+                        .decode(&tokens, true)
+                        .unwrap_or_else(|_| String::new());
+
+                    if !word.trim().is_empty() {
+                        callback(&word);
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
 }

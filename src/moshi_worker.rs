@@ -4,11 +4,11 @@ use wasm_bindgen::prelude::*;
 
 use crate::console_log;
 use crate::model::MoshiModel;
-use crate::utils::convert_audio_to_pcm;
 
 #[wasm_bindgen]
 pub struct MoshiASRDecoder {
     inner: Option<RefCell<MoshiModel>>,
+    streaming: RefCell<bool>,
 }
 
 #[wasm_bindgen]
@@ -23,25 +23,39 @@ impl MoshiASRDecoder {
                 console_log!("Successfully loaded Moshi model!");
                 Self {
                     inner: Some(RefCell::new(model)),
+                    streaming: RefCell::new(false),
                 }
             }
             Err(e) => {
                 console_log!("Failed to load Moshi model: {:?}", e);
-                Self { inner: None }
+                Self {
+                    inner: None,
+                    streaming: RefCell::new(false),
+                }
             }
         }
     }
 
-    pub fn decode_streaming(&self, audio: &[u8], callback: &js_sys::Function) {
+    pub fn start_streaming(&self) {
+        *self.streaming.borrow_mut() = true;
+    }
+
+    pub fn stop_streaming(&self) {
+        *self.streaming.borrow_mut() = false;
+    }
+
+    pub fn process_audio_chunk(&self, audio_data: &[f32], callback: &js_sys::Function) {
+        if !*self.streaming.borrow() {
+            return;
+        }
+
         if let Some(model_cell) = &self.inner {
-            if let Ok(pcm_data) = convert_audio_to_pcm(audio) {
-                let mut model = model_cell.borrow_mut();
-                let _ = model.transcribe_streaming(pcm_data, |word| {
-                    let this = &JsValue::NULL;
-                    let word_js = JsValue::from_str(word);
-                    let _ = callback.call1(this, &word_js);
-                });
-            }
+            let mut model = model_cell.borrow_mut();
+            let _ = model.process_chunk(audio_data, |word| {
+                let this = &JsValue::NULL;
+                let word_js = JsValue::from_str(word);
+                let _ = callback.call1(this, &word_js);
+            });
         }
     }
 }

@@ -24,10 +24,51 @@
       let audioContext = null;
       let processor = null;
       let source = null;
+      let modelInitialized = false;
 
       function updateStatusDiv(message) {
         document.querySelector("#status-div").textContent = message;
       }
+
+      function initializeModel() {
+        if (modelInitialized) return;
+        
+        updateStatusDiv("Loading model...");
+        moshiWorker.postMessage({
+          command: "initialize",
+          weightsURL: WEIGHTS_URL,
+          modelID: MODEL_ID,
+          mimiURL: MIMI_URL,
+          tokenizerURL: TOKENIZER_URL,
+          configURL: CONFIG_URL,
+        });
+      }
+
+      // Handle messages from worker
+      moshiWorker.addEventListener("message", (event) => {
+        const data = event.data;
+        if (data.status === "model_ready") {
+          modelInitialized = true;
+          updateStatusDiv("Model loaded - Ready to start");
+        } else if (data.status === "streaming") {
+          // Add new word to transcription in real-time
+          const outputDiv = document.querySelector("#output-generation");
+          const placeholder = document.querySelector("#output-placeholder");
+          
+          if (placeholder) placeholder.hidden = true;
+          
+          if (outputDiv.textContent) {
+            outputDiv.textContent += " " + data.word;
+          } else {
+            outputDiv.textContent = data.word;
+          }
+          outputDiv.hidden = false;
+        } else if (data.status === "loading") {
+          updateStatusDiv(data.message || "Loading...");
+        } else if (data.error) {
+          updateStatusDiv("Error: " + data.error);
+        }
+      });
 
       function updateStatus(data) {
         const { status, message, word } = data;
@@ -59,14 +100,17 @@
           processor = audioContext.createScriptProcessor(1024, 1, 1);
           
           processor.onaudioprocess = function(event) {
-            if (!isRecording) return;
+            if (!isRecording || !modelInitialized) return;
             
             const inputBuffer = event.inputBuffer;
             const inputData = inputBuffer.getChannelData(0);
             
-            // Log each frame of audio data
-            console.log('Audio frame:', inputData.length, 'samples');
-            console.log('Sample values:', Array.from(inputData.slice(0, 10)));
+            // Send audio chunk to worker
+            const audioChunk = new Float32Array(inputData);
+            moshiWorker.postMessage({
+              command: "process_audio",
+              audioData: audioChunk
+            }, [audioChunk.buffer]);
           };
           
           source.connect(processor);
@@ -107,9 +151,16 @@
         const button = document.querySelector("#speech-button");
         
         if (!isRecording) {
+          if (!modelInitialized) {
+            initializeModel();
+            return;
+          }
+          
           try {
             updateStatusDiv("Requesting microphone access...");
             await startMicrophone();
+            
+            moshiWorker.postMessage({ command: "start_stream" });
             
             isRecording = true;
             button.textContent = "Stop Speech";
@@ -119,6 +170,7 @@
             // Clear previous transcription
             document.querySelector("#output-generation").textContent = "";
             document.querySelector("#output-generation").hidden = true;
+            document.querySelector("#output-placeholder").hidden = true;
             
           } catch (error) {
             console.error('Error starting microphone:', error);
@@ -126,11 +178,12 @@
           }
         } else {
           stopMicrophone();
+          moshiWorker.postMessage({ command: "stop_stream" });
           
           isRecording = false;
           button.textContent = "Start Speech";
           button.className = "bg-gray-700 hover:bg-gray-800 text-white font-normal py-2 px-4 rounded";
-          updateStatusDiv("Stopped");
+          updateStatusDiv("Ready to start");
         }
       });
     </script>
