@@ -15,6 +15,10 @@ Try it live: **[https://efficient-nlp-wasm-streaming-speech.static.hf.space/inde
 - [Rayon](https://github.com/rayon-rs/rayon) - CPU parallelization for Rust
 - [wasm-bindgen-rayon](https://github.com/rustwasm/wasm-bindgen-rayon) - WASM bindings for Rayon
 
+## Related Projects
+
+This is a **research/tech demo**. For more accurate cloud transcription and real-time LLM grammar correction, check out [Voice Writer](https://voicewriter.io).
+
 ## Performance
 
 Performance varies by device.
@@ -67,6 +71,6 @@ Performance varies by device.
    http://localhost:8000
    ```
 
-## Limitations
+## License
 
-This is a **research/tech demo**. For more accurate cloud transcription and real-time LLM grammar correction, check out [Voice Writer](https://voicewriter.io).
+MIT License
