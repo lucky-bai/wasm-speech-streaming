@@ -25,6 +25,7 @@
       let processor = null;
       let source = null;
       let modelInitialized = false;
+      let pendingStart = false;
 
       function updateStatusDiv(message) {
         document.querySelector("#status-div").textContent = message;
@@ -45,11 +46,16 @@
       }
 
       // Handle messages from worker
-      moshiWorker.addEventListener("message", (event) => {
+      moshiWorker.addEventListener("message", async (event) => {
         const data = event.data;
         if (data.status === "model_ready") {
           modelInitialized = true;
           updateStatusDiv("Model loaded - Ready to start");
+          
+          if (pendingStart) {
+            pendingStart = false;
+            await startRecording();
+          }
         } else if (data.status === "streaming") {
           // Add new word to transcription in real-time
           const outputDiv = document.querySelector("#output-generation");
@@ -67,6 +73,7 @@
           updateStatusDiv(data.message || "Loading...");
         } else if (data.error) {
           updateStatusDiv("Error: " + data.error);
+          pendingStart = false;
         }
       });
 
@@ -146,38 +153,50 @@
         updateStatusDiv("Microphone stopped");
       }
 
+      async function startRecording() {
+        const button = document.querySelector("#speech-button");
+        
+        try {
+          updateStatusDiv("Requesting microphone access...");
+          await startMicrophone();
+          
+          // Start streaming session
+          moshiWorker.postMessage({ command: "start_stream" });
+          
+          isRecording = true;
+          button.textContent = "Stop Speech";
+          button.className = "bg-red-600 hover:bg-red-700 text-white font-normal py-2 px-4 rounded";
+          updateStatusDiv("Listening...");
+          
+          // Clear previous transcription
+          document.querySelector("#output-generation").textContent = "";
+          document.querySelector("#output-generation").hidden = true;
+          document.querySelector("#output-placeholder").hidden = true;
+          
+        } catch (error) {
+          console.error('Error starting microphone:', error);
+          updateStatusDiv("Error: " + error.message);
+          pendingStart = false;
+        }
+      }
 
       document.querySelector("#speech-button").addEventListener("click", async () => {
         const button = document.querySelector("#speech-button");
         
         if (!isRecording) {
+          // Check if model is ready
           if (!modelInitialized) {
+            pendingStart = true;
+            updateStatusDiv("Loading model...");
             initializeModel();
             return;
           }
           
-          try {
-            updateStatusDiv("Requesting microphone access...");
-            await startMicrophone();
-            
-            moshiWorker.postMessage({ command: "start_stream" });
-            
-            isRecording = true;
-            button.textContent = "Stop Speech";
-            button.className = "bg-red-600 hover:bg-red-700 text-white font-normal py-2 px-4 rounded";
-            updateStatusDiv("Listening...");
-            
-            // Clear previous transcription
-            document.querySelector("#output-generation").textContent = "";
-            document.querySelector("#output-generation").hidden = true;
-            document.querySelector("#output-placeholder").hidden = true;
-            
-          } catch (error) {
-            console.error('Error starting microphone:', error);
-            updateStatusDiv("Error: " + error.message);
-          }
+          await startRecording();
         } else {
           stopMicrophone();
+          
+          // End streaming session
           moshiWorker.postMessage({ command: "stop_stream" });
           
           isRecording = false;
@@ -207,7 +226,7 @@
           Start Speech
         </button>
         <div class="mt-2 text-gray-600">
-          Status: <span id="status-div">Ready to start</span>
+          Status: <span id="status-div">Click "Start Speech" to begin</span>
         </div>
       </div>
 
