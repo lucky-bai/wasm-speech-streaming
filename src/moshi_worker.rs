@@ -1,19 +1,10 @@
-use anyhow::Result;
 use candle_core::Device;
 use std::cell::RefCell;
 use wasm_bindgen::prelude::*;
 
+use crate::console_log;
 use crate::model::MoshiModel;
-
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = console)]
-    pub fn log(s: &str);
-}
-
-macro_rules! console_log {
-    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
-}
+use crate::utils::convert_audio_to_pcm;
 
 #[wasm_bindgen]
 pub struct MoshiASRDecoder {
@@ -47,7 +38,7 @@ impl MoshiASRDecoder {
                 console_log!("Using loaded Moshi model for transcription");
 
                 // Convert audio bytes to PCM f32 data
-                let pcm_result = self.convert_audio_to_pcm(audio);
+                let pcm_result = convert_audio_to_pcm(audio);
                 match pcm_result {
                     Ok(pcm_data) => {
                         console_log!("Converted audio to PCM, {} samples", pcm_data.len());
@@ -93,37 +84,5 @@ impl MoshiASRDecoder {
                 r#"[{"start": 0.0, "duration": 1.0, "dr": {"tokens": [], "text": "Model not loaded", "avg_logprob": -1.0, "no_speech_prob": 0.0, "temperature": 0.0, "compression_ratio": 1.0}}]"#.to_string()
             }
         }
-    }
-
-    fn convert_audio_to_pcm(&self, audio: &[u8]) -> Result<Vec<f32>> {
-        // Try to parse as WAV file
-        let mut cursor = std::io::Cursor::new(audio);
-        let wav_reader = hound::WavReader::new(&mut cursor)?;
-        let spec = wav_reader.spec();
-
-        console_log!(
-            "Audio format: sample_rate={}, channels={}, bits_per_sample={}",
-            spec.sample_rate,
-            spec.channels,
-            spec.bits_per_sample
-        );
-
-        // Moshi expects 24kHz mono
-        if spec.sample_rate != 24000 {
-            console_log!("Warning: Expected 24kHz audio, got {}Hz", spec.sample_rate);
-        }
-
-        // Convert to f32 PCM
-        let mut data = wav_reader.into_samples::<i16>().collect::<Vec<_>>();
-        data.truncate(data.len() / spec.channels as usize); // Take only first channel if stereo
-
-        let mut pcm_data = Vec::with_capacity(data.len());
-        for sample in data.into_iter() {
-            let sample = sample?;
-            pcm_data.push(sample as f32 / 32768.0); // Convert i16 to f32 [-1, 1]
-        }
-
-        console_log!("Converted to {} PCM samples", pcm_data.len());
-        Ok(pcm_data)
     }
 }

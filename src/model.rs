@@ -1,11 +1,8 @@
 use crate::config::Config;
+use crate::console_log;
 use anyhow::Result;
 use candle_core::{DType, Device, Tensor};
 use tokenizers::Tokenizer;
-
-macro_rules! console_log {
-    ($($t:tt)*) => (crate::moshi_worker::log(&format_args!($($t)*).to_string()))
-}
 
 pub struct MoshiModel {
     state: moshi::asr::State,
