@@ -4,6 +4,11 @@ Real-time streaming speech-to-text transcription running entirely in your browse
 
 ## Demo
 
+<video controls style="max-width: 640px; border-radius: 8px; margin-bottom: 1em;">
+  <source src="https://private-user-images.githubusercontent.com/123435/481822889-ff32cbfb-bec6-45c4-8bca-cf483a5a1056.mov?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTYxNTk3MDgsIm5iZiI6MTc1NjE1OTQwOCwicGF0aCI6Ii8xMjM0MzUvNDgxODIyODg5LWZmMzJjYmZiLWJlYzYtNDVjNC04YmNhLWNmNDgzYTVhMTA1Ni5tb3Y_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjUwODI1JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI1MDgyNVQyMjAzMjhaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT05ZWI2MjkxZTZmOGY1N2U4OGU2NTVlN2M2OGVjZWU1ZjFkNTA4MmM3MGY4MmE4NmZhYjYxY2EyMDI1Zjk5YTliJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.9lGXYfNfvMHDRxs98cALUw1D9ReKBlj6vFENhJ6UTdQ" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
 Try it live: **[https://efficient-nlp-wasm-streaming-speech.static.hf.space/index.html](https://efficient-nlp-wasm-streaming-speech.static.hf.space/index.html)**
 
 ## Technologies
