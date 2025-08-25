@@ -28,7 +28,7 @@
       let pendingStart = false;
       
       // Performance tracking
-      let totalProcessingTime = 0;
+      let audioChunksProcessed = 0;
       let sessionStartTime = 0;
 
       function updateStatusDiv(message) {
@@ -45,8 +45,9 @@
         if (isRecording && sessionStartTime) {
           // Calculate real-time factor (audio processed / wall clock time)
           // >1 = faster than real-time, <1 = slower than real-time  
+          const audioProcessed = audioChunksProcessed * (1024 / 24000);
           const audioSessionDuration = (Date.now() - sessionStartTime) / 1000;
-          const realTimeFactor = audioSessionDuration > 0 ? (totalProcessingTime / audioSessionDuration) : 0;
+          const realTimeFactor = audioSessionDuration > 0 ? (audioProcessed / audioSessionDuration) : 0;
           
           // Color code based on performance
           let factorColor = '';
@@ -107,9 +108,7 @@
           }
           outputDiv.hidden = false;
         } else if (data.status === "chunk_processed") {
-          if (data.processingTime) {
-            totalProcessingTime += data.processingTime;
-          }
+          audioChunksProcessed++;
         } else if (data.status === "loading") {
           updateStatusDiv(data.message || "Loading...");
         } else if (data.error) {
@@ -202,7 +201,7 @@
           await startMicrophone();
           
           // Reset performance counters
-          totalProcessingTime = 0;
+          audioChunksProcessed = 0;
           sessionStartTime = Date.now();
           
           // Start streaming session

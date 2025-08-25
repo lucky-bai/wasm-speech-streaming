@@ -45,17 +45,11 @@ impl MoshiASRDecoder {
     }
 
     pub fn process_audio_chunk(&self, audio_data: &[f32], callback: &js_sys::Function) {
-        if !*self.streaming.borrow() {
-            return;
-        }
-
-        if let Some(model_cell) = &self.inner {
-            let mut model = model_cell.borrow_mut();
-            let _ = model.process_chunk(audio_data, |word| {
-                let this = &JsValue::NULL;
-                let word_js = JsValue::from_str(word);
-                let _ = callback.call1(this, &word_js);
-            });
-        }
+        let mut model = self.inner.as_ref().unwrap().borrow_mut();
+        let _ = model.process_chunk(audio_data, |word| {
+            let this = &JsValue::NULL;
+            let word_js = JsValue::from_str(word);
+            let _ = callback.call1(this, &word_js);
+        });
     }
 }
