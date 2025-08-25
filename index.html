@@ -139,11 +139,12 @@
     <main class="grid grid-cols-1 gap-8 relative">
       <div>
         <h1 class="text-4xl font-bold">WASM Streaming Speech Recognition</h1>
-        <p class="max-w-xl text-gray-700">
+        <p class="text-gray-700">
           Transcribe audio from your microphone in real time in the browser using Rust/WASM.
-          This demo uses the
-          <a href="https://huggingface.co/kyutai/stt-1b-en_fr" target="_blank" class="underline hover:text-blue-600">Moshi ASR model</a>
-          and a WASM runtime built with
+          This demo runs entirely offline on your CPU after downloading a ~950 MB model.
+          It understands English and French, and uses the
+          <a href="https://huggingface.co/kyutai/stt-1b-en_fr" target="_blank" class="underline hover:text-blue-600">Kyutai STT model</a>
+          together with a WASM runtime built in 
           <a href="https://github.com/huggingface/candle/" target="_blank" class="underline hover:text-blue-600">Candle</a>.
         </p>
       </div>
@@ -163,6 +164,12 @@
           <p id="output-generation" hidden></p>
           <span id="output-placeholder" class="font-light text-gray-500">Click "Start Speech" to begin transcription</span>
         </div>
+      </div>
+
+      <div class="mt-4 p-3 bg-gray-50 text-gray-700 rounded-md">
+        💡 This demo shows offline transcription in your browser.  
+        For more accurate cloud transcription and real-time LLM grammar correction, check out  
+        <a href="https://voicewriter.io" target="_blank" class="underline hover:text-blue-600">Voice Writer</a>.
       </div>
     </main>
   </body>
