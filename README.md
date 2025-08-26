@@ -10,10 +10,10 @@ Try it live: **[https://efficient-nlp-wasm-streaming-speech.static.hf.space/inde
 
 ## Technologies
 
-- [Kyutai STT Model](https://huggingface.co/kyutai/stt-1b-en_fr) - 1B param streaming speech recognition model for English and French. This demo uses a 4-bit quantized version of the model.
+- [Kyutai STT Model](https://huggingface.co/kyutai/stt-1b-en_fr) - 1B param streaming speech recognition model for English and French. This demo uses a [4-bit quantized](https://huggingface.co/efficient-nlp/stt-1b-en_fr-quantized) version of the model.
 - [Candle](https://github.com/huggingface/candle/) - Hugging Face's ML framework for Rust
 - [Rayon](https://github.com/rayon-rs/rayon) - CPU parallelization for Rust
-- [wasm-bindgen-rayon](https://github.com/rustwasm/wasm-bindgen-rayon) - WASM bindings for Rayon
+- [wasm-bindgen-rayon](https://github.com/RReverser/wasm-bindgen-rayon) - WASM bindings for Rayon
 
 ## Related Projects
 

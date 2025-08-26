@@ -1,7 +1,7 @@
 import init, {
   MoshiASRDecoder,
   initThreadPool,
-} from "./build/wasm_speech_streaming.js";
+} from "../build/wasm_speech_streaming.js";
 
 async function fetchArrayBuffer(url) {
   const cacheName = "whisper-candle-cache";
@@ -89,37 +89,28 @@ class MoshiASR {
 self.addEventListener("message", async (event) => {
   const { command } = event.data;
 
-  try {
-    switch (command) {
-      case "initialize":
-        const { weightsURL, modelID, tokenizerURL, mimiURL, configURL } =
-          event.data;
-        await MoshiASR.initialize({
-          weightsURL,
-          modelID,
-          tokenizerURL,
-          mimiURL,
-          configURL,
-        });
-        break;
+  switch (command) {
+    case "initialize":
+      const { weightsURL, tokenizerURL, mimiURL, configURL } = event.data;
+      await MoshiASR.initialize({
+        weightsURL,
+        tokenizerURL,
+        mimiURL,
+        configURL,
+      });
+      break;
 
-      case "start_stream":
-        MoshiASR.startStream();
-        break;
+    case "start_stream":
+      MoshiASR.startStream();
+      break;
 
-      case "stop_stream":
-        MoshiASR.stopStream();
-        break;
+    case "stop_stream":
+      MoshiASR.stopStream();
+      break;
 
-      case "process_audio":
-        const { audioData } = event.data;
-        MoshiASR.processAudio(audioData);
-        break;
-
-      default:
-        self.postMessage({ error: "Unknown command: " + command });
-    }
-  } catch (e) {
-    self.postMessage({ error: e.message });
+    case "process_audio":
+      const { audioData } = event.data;
+      MoshiASR.processAudio(audioData);
+      break;
   }
 });
