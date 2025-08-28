@@ -6,7 +6,7 @@ Real-time streaming speech-to-text transcription running entirely in your browse
 
 https://github.com/user-attachments/assets/40246f86-9f80-4570-aa2d-bce2d04ed8e4
 
-Try it live: **[https://efficient-nlp-wasm-streaming-speech.static.hf.space/index.html](https://efficient-nlp-wasm-streaming-speech.static.hf.space/index.html)**
+Try it live: **[https://huggingface.co/spaces/efficient-nlp/wasm-streaming-speech](https://huggingface.co/spaces/efficient-nlp/wasm-streaming-speech)**
 
 ## Technologies
 
